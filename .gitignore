@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Logs and coverage
+*.log
+coverage/
+
+# Build caches
+.turbo/
+.cache/
+tsconfig.tsbuildinfo
+
+# OS metadata
+.DS_Store
+Thumbs.db
