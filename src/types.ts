@@ -8,7 +8,11 @@ export interface Position {
 export type ActionOpcode =
   | { type: 'MOVE_FORWARD' }
   | { type: 'TURN_LEFT' }
-  | { type: 'TURN_RIGHT' };
+  | { type: 'TURN_RIGHT' }
+  // --- NEW PHASE 2 OPCODES ---
+  | { type: 'PICKUP' }
+  | { type: 'DROP' }
+  | { type: 'RECHARGE' };
 
 export interface LevelDefinition {
   readonly id: string;
@@ -19,6 +23,10 @@ export interface LevelDefinition {
   readonly target: Position;
   readonly obstacles: readonly Position[];
   readonly maxSteps: number;
+  // Phase 2
+  readonly initialBattery?: number;
+  readonly pickups?: readonly { x: number, y: number, type: string, weight?: number }[];
+  readonly dropzones?: readonly { x: number, y: number, type: string }[];
 }
 
 export type SimulationStatus =
@@ -35,6 +43,9 @@ export interface StateSnapshot {
   readonly direction: Direction;
   readonly actionApplied?: ActionOpcode;
   readonly status: SimulationStatus;
+  // --- NEW PHASE 2 HUD DATA ---
+  readonly battery?: number;
+  readonly cargo?: string[];
 }
 
 export interface SimulationResult {
