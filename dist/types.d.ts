@@ -9,6 +9,12 @@ export type ActionOpcode = {
     type: 'TURN_LEFT';
 } | {
     type: 'TURN_RIGHT';
+} | {
+    type: 'PICKUP';
+} | {
+    type: 'DROP';
+} | {
+    type: 'RECHARGE';
 };
 export interface LevelDefinition {
     readonly id: string;
@@ -19,6 +25,18 @@ export interface LevelDefinition {
     readonly target: Position;
     readonly obstacles: readonly Position[];
     readonly maxSteps: number;
+    readonly initialBattery?: number;
+    readonly pickups?: readonly {
+        x: number;
+        y: number;
+        type: string;
+        weight?: number;
+    }[];
+    readonly dropzones?: readonly {
+        x: number;
+        y: number;
+        type: string;
+    }[];
 }
 export type SimulationStatus = 'RUNNING' | 'SUCCESS' | 'COLLISION' | 'OUT_OF_BOUNDS' | 'STEP_LIMIT_EXCEEDED' | 'TERMINATED_WITHOUT_TARGET';
 export interface StateSnapshot {
@@ -27,6 +45,8 @@ export interface StateSnapshot {
     readonly direction: Direction;
     readonly actionApplied?: ActionOpcode;
     readonly status: SimulationStatus;
+    readonly battery?: number;
+    readonly cargo?: string[];
 }
 export interface SimulationResult {
     readonly success: boolean;
