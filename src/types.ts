@@ -9,24 +9,31 @@ export type ActionOpcode =
   | { type: 'MOVE_FORWARD' }
   | { type: 'TURN_LEFT' }
   | { type: 'TURN_RIGHT' }
-  // --- NEW PHASE 2 OPCODES ---
   | { type: 'PICKUP' }
   | { type: 'DROP' }
   | { type: 'RECHARGE' };
 
 export interface LevelDefinition {
+  // --- PHASE 1 (Standard) ---
   readonly id: string;
   readonly width: number;
   readonly height: number;
   readonly start: Position;
   readonly startDirection: Direction;
   readonly target: Position;
-  readonly obstacles: readonly Position[];
+  readonly obstacles: readonly Position[]; 
   readonly maxSteps: number;
-  // Phase 2
+  
+  // --- PHASE 2 (Dynamic Routing & VIP) ---
   readonly initialBattery?: number;
-  readonly pickups?: readonly { x: number, y: number, type: string, weight?: number }[];
-  readonly dropzones?: readonly { x: number, y: number, type: string }[];
+  readonly initialTime?: number;
+  
+  readonly b_costs?: readonly (readonly number[])[];
+  readonly t_costs?: readonly (readonly number[])[];
+  readonly bb_costs?: readonly (readonly number[])[];
+  readonly bt_costs?: readonly (readonly number[])[];
+  
+  readonly vipParcel?: Position; 
 }
 
 export type SimulationStatus =
@@ -35,7 +42,9 @@ export type SimulationStatus =
   | 'COLLISION'
   | 'OUT_OF_BOUNDS'
   | 'STEP_LIMIT_EXCEEDED'
-  | 'TERMINATED_WITHOUT_TARGET';
+  | 'TERMINATED_WITHOUT_TARGET'
+  | 'BATTERY_DEPLETED'
+  | 'TIME_DEPLETED';
 
 export interface StateSnapshot {
   readonly stepNumber: number;
@@ -43,9 +52,11 @@ export interface StateSnapshot {
   readonly direction: Direction;
   readonly actionApplied?: ActionOpcode;
   readonly status: SimulationStatus;
-  // --- NEW PHASE 2 HUD DATA ---
+  
+  // HUD Data
   readonly battery?: number;
-  readonly cargo?: string[];
+  readonly time?: number;
+  readonly hasVipParcel?: boolean;
 }
 
 export interface SimulationResult {

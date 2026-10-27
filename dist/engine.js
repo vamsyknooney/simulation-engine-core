@@ -1,35 +1,37 @@
-// Direction vector deltas: [dx, dy]
 const DIRECTION_DELTAS = {
     NORTH: { x: 0, y: -1 },
     EAST: { x: 1, y: 0 },
     SOUTH: { x: 0, y: 1 },
     WEST: { x: -1, y: 0 },
 };
-// Rotation order: clockwise (0 -> 1 -> 2 -> 3)
 const DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
 export class GridSimulationEngine {
     level;
     obstacleMap;
     constructor(level) {
         this.level = level;
-        // Spatial hash for O(1) collision detection: "x:y"
         this.obstacleMap = new Set(level.obstacles.map((obs) => `${obs.x}:${obs.y}`));
     }
     run(actions) {
         let currentCar = { ...this.level.start };
         let currentDir = this.level.startDirection;
         let stepCount = 0;
+        let currentBattery = this.level.initialBattery;
+        let currentTime = this.level.initialTime;
+        let hasVipParcel = false;
         const trace = [
             {
                 stepNumber: 0,
                 car: currentCar,
                 direction: currentDir,
                 status: 'RUNNING',
+                battery: currentBattery,
+                time: currentTime,
+                hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
             },
         ];
         for (const action of actions) {
             stepCount++;
-            // Check step ceiling
             if (stepCount > this.level.maxSteps) {
                 trace.push({
                     stepNumber: stepCount,
@@ -37,15 +39,12 @@ export class GridSimulationEngine {
                     direction: currentDir,
                     actionApplied: action,
                     status: 'STEP_LIMIT_EXCEEDED',
+                    battery: currentBattery,
+                    time: currentTime,
+                    hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
                 });
-                return {
-                    success: false,
-                    finalStatus: 'STEP_LIMIT_EXCEEDED',
-                    totalSteps: stepCount,
-                    trace,
-                };
+                return { success: false, finalStatus: 'STEP_LIMIT_EXCEEDED', totalSteps: stepCount, trace };
             }
-            // Execute discrete action
             if (action.type === 'TURN_LEFT') {
                 currentDir = this.rotate(currentDir, -1);
             }
@@ -58,7 +57,6 @@ export class GridSimulationEngine {
                     x: currentCar.x + delta.x,
                     y: currentCar.y + delta.y,
                 };
-                // Out-of-bounds guard
                 if (nextCar.x < 0 ||
                     nextCar.x >= this.level.width ||
                     nextCar.y < 0 ||
@@ -69,33 +67,83 @@ export class GridSimulationEngine {
                         direction: currentDir,
                         actionApplied: action,
                         status: 'OUT_OF_BOUNDS',
+                        battery: currentBattery,
+                        time: currentTime,
+                        hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
                     });
-                    return {
-                        success: false,
-                        finalStatus: 'OUT_OF_BOUNDS',
-                        totalSteps: stepCount,
-                        trace,
-                    };
+                    return { success: false, finalStatus: 'OUT_OF_BOUNDS', totalSteps: stepCount, trace };
                 }
-                // Obstacle collision guard
                 if (this.obstacleMap.has(`${nextCar.x}:${nextCar.y}`)) {
-                    trace.push({
-                        stepNumber: stepCount,
-                        car: nextCar,
-                        direction: currentDir,
-                        actionApplied: action,
-                        status: 'COLLISION',
-                    });
-                    return {
-                        success: false,
-                        finalStatus: 'COLLISION',
-                        totalSteps: stepCount,
-                        trace,
-                    };
+                    const canBypass = this.level.vipParcel !== undefined && hasVipParcel;
+                    if (!canBypass) {
+                        trace.push({
+                            stepNumber: stepCount,
+                            car: nextCar,
+                            direction: currentDir,
+                            actionApplied: action,
+                            status: 'COLLISION',
+                            battery: currentBattery,
+                            time: currentTime,
+                            hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
+                        });
+                        return { success: false, finalStatus: 'COLLISION', totalSteps: stepCount, trace };
+                    }
                 }
                 currentCar = nextCar;
+                if (this.level.b_costs && currentBattery !== undefined) {
+                    const cost = this.level.b_costs[currentCar.y][currentCar.x];
+                    if (cost !== undefined) {
+                        currentBattery -= cost;
+                        if (currentBattery < 0) {
+                            trace.push({
+                                stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+                                status: 'BATTERY_DEPLETED', battery: currentBattery, time: currentTime,
+                                hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
+                            });
+                            return { success: false, finalStatus: 'BATTERY_DEPLETED', totalSteps: stepCount, trace };
+                        }
+                    }
+                }
+                if (this.level.t_costs && currentTime !== undefined) {
+                    const cost = this.level.t_costs[currentCar.y][currentCar.x];
+                    if (cost !== undefined) {
+                        currentTime -= cost;
+                        if (currentTime < 0) {
+                            trace.push({
+                                stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+                                status: 'TIME_DEPLETED', battery: currentBattery, time: currentTime,
+                                hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
+                            });
+                            return { success: false, finalStatus: 'TIME_DEPLETED', totalSteps: stepCount, trace };
+                        }
+                    }
+                }
             }
-            // Check if target reached
+            else if (action.type === 'RECHARGE') {
+                if (currentBattery !== undefined) {
+                    currentBattery = this.level.initialBattery ?? 100;
+                }
+                // Apply time penalty for anywhere-recharge
+                if (currentTime !== undefined) {
+                    currentTime -= 10;
+                    if (currentTime < 0) {
+                        trace.push({
+                            stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+                            status: 'TIME_DEPLETED', battery: currentBattery, time: currentTime,
+                            hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
+                        });
+                        return { success: false, finalStatus: 'TIME_DEPLETED', totalSteps: stepCount, trace };
+                    }
+                }
+            }
+            else if (action.type === 'PICKUP') {
+                if (this.level.vipParcel && this.level.vipParcel.x === currentCar.x && this.level.vipParcel.y === currentCar.y) {
+                    hasVipParcel = true;
+                }
+            }
+            else if (action.type === 'DROP') {
+                hasVipParcel = false;
+            }
             const reachedTarget = currentCar.x === this.level.target.x &&
                 currentCar.y === this.level.target.y;
             if (reachedTarget) {
@@ -105,13 +153,11 @@ export class GridSimulationEngine {
                     direction: currentDir,
                     actionApplied: action,
                     status: 'SUCCESS',
+                    battery: currentBattery,
+                    time: currentTime,
+                    hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
                 });
-                return {
-                    success: true,
-                    finalStatus: 'SUCCESS',
-                    totalSteps: stepCount,
-                    trace,
-                };
+                return { success: true, finalStatus: 'SUCCESS', totalSteps: stepCount, trace };
             }
             trace.push({
                 stepNumber: stepCount,
@@ -119,15 +165,12 @@ export class GridSimulationEngine {
                 direction: currentDir,
                 actionApplied: action,
                 status: 'RUNNING',
+                battery: currentBattery,
+                time: currentTime,
+                hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
             });
         }
-        // Queue exhausted without reaching target
-        return {
-            success: false,
-            finalStatus: 'TERMINATED_WITHOUT_TARGET',
-            totalSteps: stepCount,
-            trace,
-        };
+        return { success: false, finalStatus: 'TERMINATED_WITHOUT_TARGET', totalSteps: stepCount, trace };
     }
     rotate(current, deltaIndex) {
         const currentIndex = DIRECTIONS.indexOf(current);

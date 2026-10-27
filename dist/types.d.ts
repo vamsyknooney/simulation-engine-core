@@ -26,19 +26,14 @@ export interface LevelDefinition {
     readonly obstacles: readonly Position[];
     readonly maxSteps: number;
     readonly initialBattery?: number;
-    readonly pickups?: readonly {
-        x: number;
-        y: number;
-        type: string;
-        weight?: number;
-    }[];
-    readonly dropzones?: readonly {
-        x: number;
-        y: number;
-        type: string;
-    }[];
+    readonly initialTime?: number;
+    readonly b_costs?: readonly (readonly number[])[];
+    readonly t_costs?: readonly (readonly number[])[];
+    readonly bb_costs?: readonly (readonly number[])[];
+    readonly bt_costs?: readonly (readonly number[])[];
+    readonly vipParcel?: Position;
 }
-export type SimulationStatus = 'RUNNING' | 'SUCCESS' | 'COLLISION' | 'OUT_OF_BOUNDS' | 'STEP_LIMIT_EXCEEDED' | 'TERMINATED_WITHOUT_TARGET';
+export type SimulationStatus = 'RUNNING' | 'SUCCESS' | 'COLLISION' | 'OUT_OF_BOUNDS' | 'STEP_LIMIT_EXCEEDED' | 'TERMINATED_WITHOUT_TARGET' | 'BATTERY_DEPLETED' | 'TIME_DEPLETED';
 export interface StateSnapshot {
     readonly stepNumber: number;
     readonly car: Position;
@@ -46,7 +41,8 @@ export interface StateSnapshot {
     readonly actionApplied?: ActionOpcode;
     readonly status: SimulationStatus;
     readonly battery?: number;
-    readonly cargo?: string[];
+    readonly time?: number;
+    readonly hasVipParcel?: boolean;
 }
 export interface SimulationResult {
     readonly success: boolean;
