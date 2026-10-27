@@ -54,13 +54,8 @@ export class GridSimulationEngine {
 
       if (stepCount > this.level.maxSteps) {
         trace.push({
-          stepNumber: stepCount,
-          car: currentCar,
-          direction: currentDir,
-          actionApplied: action,
-          status: 'STEP_LIMIT_EXCEEDED',
-          battery: currentBattery,
-          time: currentTime,
+          stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+          status: 'STEP_LIMIT_EXCEEDED', battery: currentBattery, time: currentTime,
           hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
         });
         return { success: false, finalStatus: 'STEP_LIMIT_EXCEEDED', totalSteps: stepCount, trace };
@@ -78,19 +73,12 @@ export class GridSimulationEngine {
         };
 
         if (
-          nextCar.x < 0 ||
-          nextCar.x >= this.level.width ||
-          nextCar.y < 0 ||
-          nextCar.y >= this.level.height
+          nextCar.x < 0 || nextCar.x >= this.level.width ||
+          nextCar.y < 0 || nextCar.y >= this.level.height
         ) {
           trace.push({
-            stepNumber: stepCount,
-            car: nextCar,
-            direction: currentDir,
-            actionApplied: action,
-            status: 'OUT_OF_BOUNDS',
-            battery: currentBattery,
-            time: currentTime,
+            stepNumber: stepCount, car: nextCar, direction: currentDir, actionApplied: action,
+            status: 'OUT_OF_BOUNDS', battery: currentBattery, time: currentTime,
             hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
           });
           return { success: false, finalStatus: 'OUT_OF_BOUNDS', totalSteps: stepCount, trace };
@@ -101,21 +89,15 @@ export class GridSimulationEngine {
 
           if (!canBypass) {
             trace.push({
-              stepNumber: stepCount,
-              car: nextCar,
-              direction: currentDir,
-              actionApplied: action,
-              status: 'COLLISION',
-              battery: currentBattery,
-              time: currentTime,
+              stepNumber: stepCount, car: nextCar, direction: currentDir, actionApplied: action,
+              status: 'COLLISION', battery: currentBattery, time: currentTime,
               hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
             });
             return { success: false, finalStatus: 'COLLISION', totalSteps: stepCount, trace };
           }
         }
 
-        currentCar = nextCar;
-        
+        // Phase 2: Deduct costs of the block we are LEAVING
         if (this.level.b_costs && currentBattery !== undefined) {
           const cost = this.level.b_costs[currentCar.y][currentCar.x];
           if (cost !== undefined) {
@@ -146,11 +128,13 @@ export class GridSimulationEngine {
           }
         }
 
+        // Update the position AFTER deducting the current block's cost
+        currentCar = nextCar;
+
       } else if (action.type === 'RECHARGE') {
         if (currentBattery !== undefined) {
           currentBattery = this.level.initialBattery ?? 100;
         }
-        // Apply time penalty for anywhere-recharge
         if (currentTime !== undefined) {
           currentTime -= 10; 
           if (currentTime < 0) {
@@ -176,26 +160,16 @@ export class GridSimulationEngine {
 
       if (reachedTarget) {
         trace.push({
-          stepNumber: stepCount,
-          car: currentCar,
-          direction: currentDir,
-          actionApplied: action,
-          status: 'SUCCESS',
-          battery: currentBattery,
-          time: currentTime,
+          stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+          status: 'SUCCESS', battery: currentBattery, time: currentTime,
           hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
         });
         return { success: true, finalStatus: 'SUCCESS', totalSteps: stepCount, trace };
       }
 
       trace.push({
-        stepNumber: stepCount,
-        car: currentCar,
-        direction: currentDir,
-        actionApplied: action,
-        status: 'RUNNING',
-        battery: currentBattery,
-        time: currentTime,
+        stepNumber: stepCount, car: currentCar, direction: currentDir, actionApplied: action,
+        status: 'RUNNING', battery: currentBattery, time: currentTime,
         hasVipParcel: this.level.vipParcel ? hasVipParcel : undefined,
       });
     }
