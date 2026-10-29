@@ -24,6 +24,7 @@ export interface LevelDefinition {
     readonly startDirection: Direction;
     readonly target: Position;
     readonly obstacles: readonly Position[];
+    readonly maxBlocks: number | null;
     readonly maxSteps: number;
     readonly initialBattery?: number;
     readonly initialTime?: number;

@@ -21,7 +21,8 @@ export interface LevelDefinition {
   readonly start: Position;
   readonly startDirection: Direction;
   readonly target: Position;
-  readonly obstacles: readonly Position[]; 
+  readonly obstacles: readonly Position[];
+  readonly maxBlocks: number | null;
   readonly maxSteps: number;
   
   // --- PHASE 2 (Dynamic Routing & VIP) ---
