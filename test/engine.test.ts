@@ -165,6 +165,32 @@ describe('GridSimulationEngine', () => {
       const result = engine.run([{ type: 'PICKUP' }, { type: 'MOVE_FORWARD' }]);
       expect(result.trace.every((s) => s.hasVipParcel !== undefined)).toBe(true);
     });
+
+    // Regression guard for "deduct block cost before moving": on a move the
+    // cost charged must be for the cell being LEFT, not the destination. Here
+    // the source (cell 0) is costly while every destination is free, so an
+    // implementation that charged the destination would charge 0 instead.
+    it('charges the cost of the cell being left, not the destination', () => {
+      const level: LevelDefinition = {
+        id: 'source-cost',
+        width: 3,
+        height: 1,
+        start: { x: 0, y: 0 },
+        startDirection: 'EAST',
+        target: { x: 2, y: 0 },
+        obstacles: [],
+        maxBlocks: null,
+        maxSteps: 10,
+        initialBattery: 10,
+        // Cell 0 costs 4; cells 1 and 2 are free.
+        b_costs: [[4, 0, 0]],
+      };
+      const engine = new GridSimulationEngine(level);
+      const result = engine.run([{ type: 'MOVE_FORWARD' }, { type: 'MOVE_FORWARD' }]);
+      expect(result.finalStatus).toBe('SUCCESS');
+      // Only leaving cell 0 (cost 4) is charged => 10 - 4 = 6.
+      expect(result.trace[result.trace.length - 1]?.battery).toBe(6);
+    });
   });
 
   describe('Phase 2 - time', () => {
